@@ -1,8 +1,8 @@
 {
   "appName": {
-    "message": "Lufa Sorter"
+    "message": "Classement Lufa "
   },
   "appDesc": {
-    "message": "Sorts the Lufa products in order of popularity"
+    "message": "Ordonne les produits lufa selon leur popularité"
   }
 }
