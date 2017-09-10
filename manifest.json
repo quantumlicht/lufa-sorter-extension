@@ -1,8 +1,11 @@
 {
   "manifest_version": 2,
-  "version": "1.0.1",
-  "name": "Lufa Scraper",
+  "version": "1.0.2",
+  "name": "__MSG_appName__",
+  "description": "__MSG_appDesc__",
+  "default_locale": "en_US",
   "web_accessible_resources": ["menu.tpl"],
+
   "content_scripts": [
     {
       "matches": ["https://montreal.lufa.com/*"],

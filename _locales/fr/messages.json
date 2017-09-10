@@ -1,0 +1,8 @@
+{
+  "appName": {
+    "message": "Lufa Sorter"
+  },
+  "appDesc": {
+    "message": "Sorts the Lufa products in order of popularity"
+  }
+}
