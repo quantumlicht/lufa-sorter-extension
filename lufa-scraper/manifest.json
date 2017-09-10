@@ -1,0 +1,13 @@
+{
+  "manifest_version": 2,
+  "version": "1.0.0",
+  "name": "Lufa Scraper",
+  "web_accessible_resources": ["menu.tpl"],
+  "content_scripts": [
+    {
+      "matches": ["https://montreal.lufa.com/*"],
+      "css": [],
+      "js": ["content-script.js"]
+    }
+  ]
+}
