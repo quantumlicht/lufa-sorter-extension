@@ -1,43 +1,65 @@
 /* ========================================================================== */
-/* Entry point */
+/* Globals */
 const domParser = new DOMParser()
 const locale = window.location.pathname.split(/\//)[1]
+var htmlProductNodes
+var isSorting = false
+var count = 0
 const statusMap = {
   fr: {
     done: 'Classement complété',
     progress: 'Classement en cours...',
-    presentation: 'Veuillez patienter pendant le classement des produits selon leur popularité'
+    appName: "Classement Lufa",
+    appPresentation: "Veuillez cliquer sur 'Ordonner' pour faire le classement des produits selon leur popularité",
+    'sort-btn': 'Ordonner'
   },
   en: {
     done: 'Sorting complete',
+    appName: 'Lufa Sorter',
     progress: 'Sorting in progress...',
-    presentation: 'Please wait while we sort the products according to their popularity'
+    appPresentation: "Click the 'sort' button to sort the products according to their popularity",
+    'sort-btn': 'Sort'
   }
 }
 
+/* ========================================================================== */
+/* Update callbacks */
+function sortComplete(){
+  isSorting = false
+  updateMenu()
+}
+function sortStarted(){
+  isSorting = true
+  updateMenu()
+}
+
+function fetchComplete(){
+  count += 1
+  updateMenu()
+}
+
+/* ========================================================================== */
+/* Entry point */
 main()
 
 function main(){
-  let htmlProductNodes = document.querySelectorAll('.single-product-wrapper')
+  htmlProductNodes = document.querySelectorAll('.single-product-wrapper')
   if (!htmlProductNodes){
     return
   }
   url = chrome.runtime.getURL('menu.tpl')
   fetch(url).then(convertToHtml).then(htmlDoc => {
       return injectMenu(htmlDoc, htmlProductNodes.length)
-  }).then(()=>{
-    runSorting(htmlProductNodes)
   })
 }
 
-function runSorting(htmlProductNodes){
-  let counter = 0
+function runSorting(){
+  sortStarted()
   let productRatingsPromiseList = [].slice.call(htmlProductNodes).map((htmlProductNode,i) => {
     return new Promise((resolve, reject)=> {
       let url = htmlProductNode.querySelector('.product-reviews > a').href.replace(/#[a-zA-Z0-9]+$/g, '')
       fetchProductRatings(url, domParser).then(ratings => {
-        counter += 1
-        updateMenu(counter, htmlProductNodes.length)
+        fetchComplete()
         resolve({
           htmlProductNode,
           ratings,
@@ -50,30 +72,41 @@ function runSorting(htmlProductNodes){
   Promise.all(productRatingsPromiseList)
     .then(productRatingList => {
       let sortedProductList = productRatingList.sort(sortDesc)
+      sortComplete()
       console.log('sortedProductList', sortedProductList)
       injectNewProductList(sortedProductList)
     })
 }
 
-function getStatusMessage(count, total){
-  let key = count == total ? 'done' : 'progress'
+function getStatusMessage(){
+  let key = isSorting ? 'progress' : 'done'
   return statusMap[locale][key]
 }
 
 /* ========================================================================== */
 
-function injectMenu(htmlDoc, nbPromises){
+function injectMenu(htmlDoc){
  let element = document.querySelector('.products-list')
+ let style = htmlDoc.querySelector('style')
+ let head = document.head || document.getElementsByTagName('head')[0]
+ head.appendChild(style)
+
  let newElement = htmlDoc.querySelector('div#lufa-scraper-container')
- newElement.querySelector('#status-message').innerHTML = getStatusMessage(0, nbPromises)
- newElement.querySelector('#presentation').innerHTML = statusMap[locale]['presentation']
- newElement.querySelector('#promise-counter').innerHTML = `<progress max="${nbPromises}" value="${0}"/>`
+ newElement.querySelector('#status-message').innerHTML = getStatusMessage()
+ newElement.querySelector('#app-name').innerHTML = statusMap[locale]['appName']
+ newElement.querySelector('#app-presentation').innerHTML = statusMap[locale]['appPresentation']
+
+ newElement.querySelector('#promise-counter').innerHTML = `<progress max="${htmlProductNodes.length}" value="${count}"/>`
+ newElement.querySelector('#btn-sort').innerHTML = statusMap[locale]['sort-btn']
+ newElement.querySelector('#btn-sort').addEventListener('click', runSorting)
  element.parentNode.insertBefore(newElement, element)
 }
 
-function updateMenu(count, nbPromises){
-  document.querySelector('#status-message').innerHTML = getStatusMessage(count, nbPromises)
-  document.querySelector('#promise-counter').innerHTML = `<progress max="${nbPromises}" value="${count}"/>`
+function updateMenu(nbPromises){
+  document.querySelector('#status-message').innerHTML = getStatusMessage()
+  document.querySelector('#promise-counter').innerHTML = `<progress max="${htmlProductNodes.length}" value="${count}"/>`
+  document.querySelector('#progress-container').style.display = isSorting ? 'block': 'none'
+  document.querySelector('#btn-sort').disabled = isSorting
 }
 /* DOM manipulation methods */
 function injectNewProductList(productList){
