@@ -2,6 +2,8 @@
 /* Globals */
 const domParser = new DOMParser()
 const locale = window.location.pathname.split(/\//)[1]
+
+
 var htmlProductNodes
 var isSorting = false
 var count = 0
@@ -11,15 +13,18 @@ const statusMap = {
     progress: 'Classement en cours...',
     appName: "Classement Lufa",
     appPresentation: "Veuillez cliquer sur 'Ordonner' pour faire le classement des produits selon leur popularité",
-    'sort-btn': 'Ordonner'
+    sortBtn: 'Ordonner',
+    autoOrder: "La page est automatiquement ordonnée à cause de l'option que vous avez activée",
   },
   en: {
     done: 'Sorting complete',
     appName: 'Lufa Sorter',
     progress: 'Sorting in progress...',
     appPresentation: "Click the 'sort' button to sort the products according to their popularity",
-    'sort-btn': 'Sort'
-  }
+    sortBtn: 'Sort',
+    autoOrder: 'Page is automatically sorted because of the options you enabled',
+  },
+
 }
 
 /* ========================================================================== */
@@ -43,14 +48,30 @@ function fetchComplete(){
 main()
 
 function main(){
-  htmlProductNodes = document.querySelectorAll('.single-product-wrapper')
+
+
+  htmlProductNodes = document.querySelectorAll('.family-products > .single-product-wrapper')
   if (!htmlProductNodes){
     return
   }
-  url = chrome.runtime.getURL('menu.tpl')
-  fetch(url).then(convertToHtml).then(htmlDoc => {
-      return injectMenu(htmlDoc, htmlProductNodes.length)
+
+  chrome.storage.sync.get({
+    autoOrder: false
+  }, function(items) {
+    let {autoOrder} = items
+    url = chrome.runtime.getURL('menu.tpl')
+    fetch(url).then(convertToHtml).then(htmlDoc => {
+        injectMenu(htmlDoc, autoOrder)
+        if (autoOrder){
+          runSorting()
+        }
+    })
   })
+
+
+
+
+
 }
 
 function runSorting(){
@@ -63,6 +84,7 @@ function runSorting(){
         resolve({
           htmlProductNode,
           ratings,
+          weightedRank: getWeightedRank(ratings),
           nbComments: getNbCommentsFromNode(htmlProductNode)
         })
       })
@@ -85,19 +107,20 @@ function getStatusMessage(){
 
 /* ========================================================================== */
 
-function injectMenu(htmlDoc){
+function injectMenu(htmlDoc, autoOrder){
  let element = document.querySelector('.products-list')
- let style = htmlDoc.querySelector('style')
- let head = document.head || document.getElementsByTagName('head')[0]
- head.appendChild(style)
+ let newElement = htmlDoc.querySelector('.lufa-scraper-wrapper')
 
- let newElement = htmlDoc.querySelector('div#lufa-scraper-container')
+ newElement.querySelector('#auto-order').style.display = autoOrder ? 'block': 'none'
+ newElement.querySelector('#auto-order').innerHTML = statusMap[locale]['autoOrder']
+
  newElement.querySelector('#status-message').innerHTML = getStatusMessage()
  newElement.querySelector('#app-name').innerHTML = statusMap[locale]['appName']
  newElement.querySelector('#app-presentation').innerHTML = statusMap[locale]['appPresentation']
 
  newElement.querySelector('#promise-counter').innerHTML = `<progress max="${htmlProductNodes.length}" value="${count}"/>`
- newElement.querySelector('#btn-sort').innerHTML = statusMap[locale]['sort-btn']
+
+ newElement.querySelector('#btn-sort').innerHTML = statusMap[locale]['sortBtn']
  newElement.querySelector('#btn-sort').addEventListener('click', runSorting)
  element.parentNode.insertBefore(newElement, element)
 }
@@ -110,6 +133,9 @@ function updateMenu(nbPromises){
 }
 /* DOM manipulation methods */
 function injectNewProductList(productList){
+  let featuredGrid = document.querySelector('.family-featured-products.grid')
+  featuredGrid.parentNode.removeChild(featuredGrid)
+
   let grid = document.querySelector('.family-products.grid')
   if (!grid){
     return
@@ -128,19 +154,35 @@ function stripNonNumeric(str){
 
 /* ========================================================================== */
 /* Sorting methods */
-function getWeightedRank(product) {
-  let score = Object.keys(product.ratings).reduce((sum, nbStar)=> {
-    return sum + nbStar * product.ratings[nbStar]
+function getWeightedRank(ratings) {
+  let score = Object.keys(ratings).reduce((sum, nbStar)=> {
+    return sum + nbStar * ratings[nbStar]
   }, 0)
-  return score / Object.values(product.ratings).reduce( (sum, v)=> {return sum + v}, 0)
+  if (score == 0) {
+    return score
+  }
+
+  return score / Object.values(ratings).reduce( (sum, v)=> {return sum + v}, 0)
 }
 
 function sortAsc(a, b){
-  return getWeightedRank(a) - getWeightedRank(b)
+  let diff = a.weightedRank - b.weightedRank
+  if (diff) {
+    return diff
+  }
+  else {
+    return a.nbComments - b.nbComments
+  }
 }
 
 function sortDesc(a, b){
-  return getWeightedRank(b) - getWeightedRank(a)
+  let diff = b.weightedRank - a.weightedRank
+  if (diff) {
+    return diff
+  }
+  else {
+    return b.nbComments - a.nbComments
+  }
 }
 
 /* ========================================================================== */

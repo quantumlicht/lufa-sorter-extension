@@ -4,5 +4,14 @@
   },
   "appDesc": {
     "message": "Sorts the Lufa products in order of popularity"
+  },
+  "yes": {
+    "message": "Yes"
+  },
+  "no": {
+    "message": "No"
+  },
+  "save": {
+    "message": "Save"
   }
 }
