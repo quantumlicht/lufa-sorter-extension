@@ -9,7 +9,7 @@ jobs:
       - run:
           name: Package build
           command: |
-            zip lufa-extension.zip src/*
+            zip -r lufa-extension.zip src/*
       - run :
           name: Validate archive
           command: |
