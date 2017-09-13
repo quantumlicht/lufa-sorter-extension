@@ -67,11 +67,6 @@ function main(){
         }
     })
   })
-
-
-
-
-
 }
 
 function runSorting(){
