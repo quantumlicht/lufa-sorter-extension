@@ -10,7 +10,7 @@ jobs:
           name: manifest version
           command: |
             sed -i 's/%VERSION%/${CIRCLE_TAG}/g' src/manifest.json
-      -run:
+      - run:
           name: validate replace
           command: |
             cat src/manifest.json
