@@ -14,10 +14,10 @@ jobs:
           command: |
             if [ "${CIRCLE_BRANCH}" == "master" ]; then
               curl \
-              -H "Authorization: Bearer $TOKEN"  \
+              -H "Authorization: Bearer ${TOKEN}"  \
               -H "x-goog-api-version: 2" \
               -X PUT \
               -T lufa-extension.zip \
               -v \
-              https://www.googleapis.com/upload/chromewebstore/v1.1/items/$APP_ID
+              https://www.googleapis.com/upload/chromewebstore/v1.1/items/${APP_ID}
             fi
