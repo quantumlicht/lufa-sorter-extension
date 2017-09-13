@@ -9,11 +9,11 @@ jobs:
       - run:
           name: manifest version
           command: |
-          sed -i 's/%VERSION%/${CIRCLE_TAG}/g' src/manifest.json
+            sed -i 's/%VERSION%/${CIRCLE_TAG}/g' src/manifest.json
       -run:
-        name: validate replace
-        command: |
-          cat src/manifest.json
+          name: validate replace
+          command: |
+            cat src/manifest.json
       - run:
           name: Package build
           command: |
