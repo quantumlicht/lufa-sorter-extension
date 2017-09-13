@@ -13,7 +13,7 @@ jobs:
       - run :
           name: Validate archive
           command: |
-            zipinfo -1 lufa-extension.zip
+            zipinfo -1 src/lufa-extension.zip
       - deploy:
           command: |
             if [ "${CIRCLE_BRANCH}" == "master" ]; then
@@ -21,7 +21,7 @@ jobs:
               -H "Authorization: Bearer ${TOKEN}"  \
               -H "x-goog-api-version: 2" \
               -X PUT \
-              -T lufa-extension.zip \
+              -T src/lufa-extension.zip \
               -v \
               https://www.googleapis.com/upload/chromewebstore/v1.1/items/${APP_ID}
             fi
