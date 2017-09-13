@@ -1,7 +1,7 @@
 version: 2
 jobs:
   build:
-    working_directory: ~/lufa-extension
+    working_directory: ~/lufa-extension/src
     docker:
       - image: circleci/python:3.6
     steps:
@@ -9,7 +9,7 @@ jobs:
       - run:
           name: Package build
           command: |
-            zip -r lufa-extension.zip src/*
+            zip -r lufa-extension.zip ./*
       - run :
           name: Validate archive
           command: |
