@@ -1,6 +1,6 @@
 version: 2
 jobs:
-  deploy:
+  build:
     working_directory: ~/lufa-extension
     docker:
       - image: circleci/python:3.6
@@ -10,8 +10,7 @@ jobs:
           name: Package build
           command: |
             zip lufa-extension.zip src/*
-      - run:
-          name: Deploy to chrome store
+      - deploy:
           command: |
             if [ "${CIRCLE_BRANCH}" == "master" ]; then
               curl \
