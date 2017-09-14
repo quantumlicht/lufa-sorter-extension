@@ -55,14 +55,14 @@ def publish(package, app_id, client_id, client_secret, refresh_token, visibility
     print('Uploading {}'.format(package))
     url = 'https://www.googleapis.com/upload/chromewebstore/v1.1/items/{}'.format(app_id)
     with open(package, 'r') as f:
-        def print_progress():
-            progress = 0
-            for line in f:
-                progress += len(line)
-                print('{:.2f} MB'.format(progress / 1024. / 1024.), end='\r')
-                sys.stdout.flush()
-                yield line
-        response = session.put(url, data=print_progress())
+        # def print_progress():
+        #     progress = 0
+        #     for line in f:
+        #         progress += len(line)
+        #         print('{:.2f} MB'.format(progress / 1024. / 1024.), end='\r')
+        #         sys.stdout.flush()
+        #         yield line
+        response = session.put(url, data=package)
         print()
     check_response_success(response)
     data = response.json()
