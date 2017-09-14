@@ -32,11 +32,11 @@ def publish(package, app_id, client_id, client_secret, refresh_token, visibility
     data = response.json()
     if data.get('itemError'):
         for error in data['itemError']:
-            cprint('{}: {}'.format(error['error_code'], error['error_detail']), 'red')
+            print('{}: {}'.format(error['error_code'], error['error_detail']))
         sys.exit(1)
     current_version = data['crxVersion']
     # current_version = "1.0.5"
-    # print('Current Webstore version is {}'.format(current_version))
+    print('Current Webstore version is {}'.format(current_version))
     # with ZipFile(package, 'r') as f:
     #     manifest_name = next(name for name in f.namelist() if name.endswith('manifest.json'))
     #     print(f.open(manifest_name, 'r').read().decode('utf-8'))
@@ -62,7 +62,7 @@ def publish(package, app_id, client_id, client_secret, refresh_token, visibility
         #         print('{:.2f} MB'.format(progress / 1024. / 1024.), end='\r')
         #         sys.stdout.flush()
         #         yield line
-        response = session.put(url, data=package)
+        response = session.put(url, files={'file': files = {'file': open(package, 'rb')}})
         print()
     check_response_success(response)
     data = response.json()
