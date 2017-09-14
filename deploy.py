@@ -80,4 +80,4 @@ def publish(package, app_id, client_id, client_secret, refresh_token, visibility
     print(data['status'][0])
 
 if __name__ == '__main__':
-    publish('./lufa-extension.zip',os.environ.get('APP_ID'), os.environ.get('CLIENT_ID'), os.environ.get('CLIENT_SECRET'),os.environ.get('REFRESH_TOKEN'), 'default'  )
+    publish('src/lufa-extension.zip',os.environ.get('APP_ID'), os.environ.get('CLIENT_ID'), os.environ.get('CLIENT_SECRET'),os.environ.get('REFRESH_TOKEN'), 'default'  )
