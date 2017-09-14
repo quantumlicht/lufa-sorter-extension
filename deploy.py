@@ -6,40 +6,41 @@ import os
 from zipfile import ZipFile
 
 def publish(package, app_id, client_id, client_secret, refresh_token, visibility):
-    def check_response_success(response):
-        if response.status_code != 200:
-            cprint('Status {} {}'.format(response.status_code, response.reason), 'red')
-            print(response.text)
-            sys.exit(1)
-
-    response = requests.post('https://www.googleapis.com/oauth2/v3/token', data={
-        'client_id': client_id,
-        'client_secret': client_secret,
-        'grant_type': 'refresh_token',
-        'refresh_token': refresh_token,
-    })
-    check_response_success(response)
-    access_token = response.json()['access_token']
-
-    session = requests.Session()
-    session.headers['Authorization'] = 'Bearer {}'.format(access_token)
-
-    print('Getting details for {}'.format(app_id))
-    # currently, only DRAFT is supported
-    url = 'https://www.googleapis.com/chromewebstore/v1.1/items/{}?projection=DRAFT'.format(app_id)
-    response = session.get(url)
-    check_response_success(response)
-    data = response.json()
-    if data.get('itemError'):
-        for error in data['itemError']:
-            cprint('{}: {}'.format(error['error_code'], error['error_detail']), 'red')
-        sys.exit(1)
-    current_version = data['crxVersion']
+    # def check_response_success(response):
+    #     if response.status_code != 200:
+    #         print('Status {} {}'.format(response.status_code, response.reason))
+    #         print(response.text)
+    #         sys.exit(1)
+    #
+    # response = requests.post('https://www.googleapis.com/oauth2/v3/token', data={
+    #     'client_id': client_id,
+    #     'client_secret': client_secret,
+    #     'grant_type': 'refresh_token',
+    #     'refresh_token': refresh_token,
+    # })
+    # check_response_success(response)
+    # access_token = response.json()['access_token']
+    #
+    # session = requests.Session()
+    # session.headers['Authorization'] = 'Bearer {}'.format(access_token)
+    #
+    # print('Getting details for {}'.format(app_id))
+    # # currently, only DRAFT is supported
+    # url = 'https://www.googleapis.com/chromewebstore/v1.1/items/{}?projection=DRAFT'.format(app_id)
+    # response = session.get(url)
+    # check_response_success(response)
+    # data = response.json()
+    # if data.get('itemError'):
+    #     for error in data['itemError']:
+    #         cprint('{}: {}'.format(error['error_code'], error['error_detail']), 'red')
+    #     sys.exit(1)
+    # current_version = data['crxVersion']
+    current_version = "1.0.5"
     print('Current Webstore version is {}'.format(current_version))
     with ZipFile(package, 'r') as f:
         manifest_name = next(name for name in f.namelist() if name.endswith('manifest.json'))
         print(f.open(manifest_name, 'r').read().decode('utf-8'))
-        manifest = json.loads(f.open(manifest_name, 'r').read().decode('utf-8').replace("''",'"'))
+        manifest = json.loads(f.open(manifest_name, 'r').read().decode('utf-8'))
         print('Found {} with version {}'.format(manifest_name, manifest['version']))
     version_parts = current_version.split('.')
     major_version = version_parts[0]
