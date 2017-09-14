@@ -62,8 +62,7 @@ def publish(package, app_id, client_id, client_secret, refresh_token, visibility
         #         print('{:.2f} MB'.format(progress / 1024. / 1024.), end='\r')
         #         sys.stdout.flush()
         #         yield line
-        response = session.put(url, files={'file': files = {'file': open(package, 'rb')}})
-        print()
+        response = session.put(url, files={'file': f})
     check_response_success(response)
     data = response.json()
     if data.get('itemError'):
