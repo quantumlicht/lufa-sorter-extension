@@ -10,18 +10,6 @@ jobs:
           name: manifest version
           command: |
             sed -i 's/%VERSION%/$CIRCLE_TAG/g' src/manifest.json.tmpl > src/manifest.json
-      - run:
-          name: validate replace
-          command: |
-            cat src/manifest.json
-      - run:
-          name: Package build
-          command: |
-            cd src && zip -r lufa-extension.zip ./*
-      - run :
-          name: Validate archive
-          command: |
-            zipinfo -1 src/lufa-extension.zip
       - deploy:
           command: |
             sudo pip install requests && python deploy.py

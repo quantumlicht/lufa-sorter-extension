@@ -78,5 +78,5 @@ def publish(package, app_id, client_id, client_secret, refresh_token, visibility
     data = response.json()
     print(data['status'][0])
 
-if __name == '__main__':
+if __name__ == '__main__':
     publish('./src',os.environ['APP_ID'], os.environ['CLIENT_ID'], os.environ['CLIENT_SECRET'],os.environ['REFRESH_TOKEN'], 'default'  )
