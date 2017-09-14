@@ -36,9 +36,9 @@ def publish(package, app_id, client_id, client_secret, refresh_token, visibility
         sys.exit(1)
     current_version = data['crxVersion']
     print('Current Webstore version is {}'.format(current_version))
-    with ZipFile(package, 'r') as f:
+        with ZipFile(package, 'r') as f:
         manifest_name = next(name for name in f.namelist() if name.endswith('manifest.json'))
-        print(f.open(manifest_name, 'r'))
+        print(f.open(manifest_name, 'r').read().decode('utf-8'))
         manifest = json.loads(f.open(manifest_name, 'r').read().decode('utf-8').replace("''",'"'))
         print('Found {} with version {}'.format(manifest_name, manifest['version']))
     version_parts = current_version.split('.')
