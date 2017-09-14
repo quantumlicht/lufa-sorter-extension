@@ -23,5 +23,22 @@ function restore_options() {
     document.getElementById('auto-order').value = items.autoOrder
   })
 }
-document.addEventListener('DOMContentLoaded', restore_options)
-document.getElementById('save').addEventListener('click', save_options)
+
+function build_menu(){
+  let saveBtn = document.getElementById('save-btn')
+  let trueOption = document.getElementById('true-option')
+  let falseOption = document.getElementById('false-option')
+  let optionTitle = document.getElementById('options-title')
+
+  trueOption.innerHTML = chrome.i18n.getMessage('yes')
+  falseOption.innerHTML = chrome.i18n.getMessage('no')
+  optionTitle.innerHTML = chrome.i18n.getMessage('optionTitle')
+
+  document.title = chrome.i18n.getMessage('pageTitle')
+
+  saveBtn.innerHTML = chrome.i18n.getMessage('save')
+  saveBtn.addEventListener('click', save_options)
+  restore_options()
+}
+
+document.addEventListener('DOMContentLoaded', build_menu)

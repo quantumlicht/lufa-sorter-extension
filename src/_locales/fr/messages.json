@@ -13,5 +13,11 @@
   },
   "save": {
     "message": "Sauvegarder"
+  },
+  "optionTitle": {
+    "message": "Ordonner automatiquement"
+  },
+  "pageTitle": {
+    "message": "Options Classement Lufa"
   }
 }

@@ -9,7 +9,7 @@ jobs:
       - run:
           name: manifest version
           command: |
-            sed -i 's/%VERSION%/$CIRCLE_TAG/g' src/manifest.json
+            sed -i 's/%VERSION%/$CIRCLE_TAG/g' src/manifest.json.tmpl > src/manifest.json
       - run:
           name: validate replace
           command: |
@@ -24,13 +24,7 @@ jobs:
             zipinfo -1 src/lufa-extension.zip
       - deploy:
           command: |
-            curl \
-            -H "Authorization: Bearer ${TOKEN}"  \
-            -H "x-goog-api-version: 2" \
-            -X PUT \
-            -T src/lufa-extension.zip \
-            -v \
-            https://www.googleapis.com/upload/chromewebstore/v1.1/items/${APP_ID}
+            python deploy.py
 workflows:
   version: 2
   build-n-deploy:

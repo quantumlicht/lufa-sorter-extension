@@ -3,7 +3,6 @@
 const domParser = new DOMParser()
 const locale = window.location.pathname.split(/\//)[1]
 
-
 var htmlProductNodes
 var isSorting = false
 var count = 0
@@ -49,7 +48,6 @@ main()
 
 function main(){
 
-
   htmlProductNodes = document.querySelectorAll('.family-products > .single-product-wrapper')
   if (!htmlProductNodes){
     return
@@ -58,7 +56,8 @@ function main(){
   chrome.storage.sync.get({
     autoOrder: false
   }, function(items) {
-    let {autoOrder} = items
+    console.log(items)
+    let autoOrder = items.autoOrder == "true"
     url = chrome.runtime.getURL('menu.tpl')
     fetch(url).then(convertToHtml).then(htmlDoc => {
         injectMenu(htmlDoc, autoOrder)
