@@ -36,10 +36,10 @@ def publish(package, app_id, client_id, client_secret, refresh_token, visibility
         sys.exit(1)
     current_version = data['crxVersion']
     print('Current Webstore version is {}'.format(current_version))
-
     with ZipFile(package, 'r') as f:
         manifest_name = next(name for name in f.namelist() if name.endswith('manifest.json'))
-        manifest = json.load(f.open(manifest_name))
+        print(f.open(manifest_name, 'r'))
+        manifest = json.loads(f.open(manifest_name, 'r').read().decode('utf-8').replace("''",'"'))
         print('Found {} with version {}'.format(manifest_name, manifest['version']))
     version_parts = current_version.split('.')
     major_version = version_parts[0]
@@ -67,7 +67,7 @@ def publish(package, app_id, client_id, client_secret, refresh_token, visibility
     data = response.json()
     if data.get('itemError'):
         for error in data['itemError']:
-            print('{}: {}'.format(error['error_code'], error['error_detail']))
+            print("{}: {}".format(error['error_code'], error['error_detail']))
         sys.exit(1)
     print(data['uploadState'])
 
@@ -79,4 +79,4 @@ def publish(package, app_id, client_id, client_secret, refresh_token, visibility
     print(data['status'][0])
 
 if __name__ == '__main__':
-    publish('./src/lufa-extension.zip',os.environ['APP_ID'], os.environ['CLIENT_ID'], os.environ['CLIENT_SECRET'],os.environ['REFRESH_TOKEN'], 'default'  )
+    publish('./src/lufa-extension.zip',os.environ.get('APP_ID'), os.environ.get('CLIENT_ID'), os.environ.get('CLIENT_SECRET'),os.environ.get('REFRESH_TOKEN'), 'default'  )
