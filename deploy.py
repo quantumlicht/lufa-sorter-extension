@@ -39,6 +39,7 @@ def publish(package, app_id, client_id, client_secret, refresh_token, visibility
     # print('Current Webstore version is {}'.format(current_version))
     with ZipFile(package, 'r') as f:
         manifest_name = next(name for name in f.namelist() if name.endswith('manifest.json'))
+        manifest = json.loads(f.open(manifest_name, 'r').read().decode('utf-8'))
         print('Found {} with version {}'.format(manifest_name, manifest['version']))
     # v_maj, v_min, v_patch = current_version.split('.')
     # new_version = '.'.join((v_maj, v_min, str(int(v_patch) + 1)))
