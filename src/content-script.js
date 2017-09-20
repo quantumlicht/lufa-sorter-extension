@@ -3,7 +3,8 @@
 const domParser = new DOMParser()
 const locale = window.location.pathname.split(/\//)[1]
 
-var htmlProductNodes
+var productList
+var partitionedProductList
 var isSorting = false
 var count = 0
 const statusMap = {
@@ -32,6 +33,7 @@ function sortComplete(){
   isSorting = false
   updateMenu()
 }
+
 function sortStarted(){
   isSorting = true
   updateMenu()
@@ -48,10 +50,25 @@ main()
 
 function main(){
 
-  htmlProductNodes = document.querySelectorAll('.family-products > .single-product-wrapper')
+  let htmlProductNodes = [].slice.call(document.querySelectorAll('.family-products > .single-product'))
   if (!htmlProductNodes){
     return
   }
+
+  /* extend with metadata */
+  productList = htmlProductNodes.map(htmlNode => {
+    return {
+      htmlNode,
+      id: getProductId(htmlNode),
+      nbComments: getNbCommentsFromNode(htmlNode),
+      weightedRank: getProductRating(htmlNode)
+    }
+  })
+
+  // Do preliminary sorting and then partition by rating
+  partitionedProductList = partitionByRating(productList)
+
+  runPreliminarySorting()
 
   chrome.storage.sync.get({
     autoOrder: false
@@ -62,45 +79,53 @@ function main(){
     fetch(url).then(convertToHtml).then(htmlDoc => {
         injectMenu(htmlDoc, autoOrder)
         if (autoOrder){
-          runSorting()
+          runDetailedSorting()
         }
     })
   })
 }
 
-function runSorting(){
-  sortStarted()
-  let productRatingsPromiseList = [].slice.call(htmlProductNodes).map((htmlProductNode,i) => {
+function runPreliminarySorting(){
+  initProductList()
+  injectProductList(productList.sort(sortDesc))
+}
+
+function getProductRatingPromiseList(myProductList){
+  return myProductList.map(product => {
+    var productNode = product.htmlNode
     return new Promise((resolve, reject)=> {
-      let url = htmlProductNode.querySelector('.product-reviews > a').href.replace(/#[a-zA-Z0-9]+$/g, '')
-      fetchProductRatings(url, domParser).then(ratings => {
+      let url = productNode.querySelector('.product-reviews > a').href.replace(/#[a-zA-Z0-9]+$/g, '')
+      fetchProductRating(url, domParser).then(ratings => {
         fetchComplete()
         resolve({
-          htmlProductNode,
+          htmlNode: productNode,
           ratings,
           weightedRank: getWeightedRank(ratings),
-          nbComments: getNbCommentsFromNode(htmlProductNode)
+          nbComments: getNbCommentsFromNode(productNode)
         })
       })
     })
   })
-
-  Promise.all(productRatingsPromiseList)
-    .then(productRatingList => {
-      let sortedProductList = productRatingList.sort(sortDesc)
-      sortComplete()
-      console.log('sortedProductList', sortedProductList)
-      injectNewProductList(sortedProductList)
-    })
 }
 
-function getStatusMessage(){
-  let key = isSorting ? 'progress' : 'done'
-  return statusMap[locale][key]
+function runDetailedSorting(){
+  sortStarted()
+  var newList = [[],[],[],[],[],[]]
+  let partitionPromiseList = partitionedProductList.map((productPartition, i) => {
+    let productRatingsPromiseList = getProductRatingPromiseList(productPartition)
+    return Promise.all(productRatingsPromiseList)
+      .then(productRatingList => {
+        let sortedProductList = productRatingList.sort(sortDesc)
+        newList[i] = sortedProductList
+        injectProductList([].concat.apply([], newList))
+      })
+  })
+  Promise.all(partitionPromiseList).then(sortComplete)
+
 }
 
 /* ========================================================================== */
-
+/* DOM manipulation methods */
 function injectMenu(htmlDoc, autoOrder){
  let element = document.querySelector('.products-list')
  let newElement = htmlDoc.querySelector('.lufa-scraper-wrapper')
@@ -112,21 +137,21 @@ function injectMenu(htmlDoc, autoOrder){
  newElement.querySelector('#app-name').innerHTML = statusMap[locale]['appName']
  newElement.querySelector('#app-presentation').innerHTML = statusMap[locale]['appPresentation']
 
- newElement.querySelector('#promise-counter').innerHTML = `<progress max="${htmlProductNodes.length}" value="${count}"/>`
+ newElement.querySelector('#promise-counter').innerHTML = `<progress max="${productList.length}" value="${count}"/>`
 
  newElement.querySelector('#btn-sort').innerHTML = statusMap[locale]['sortBtn']
- newElement.querySelector('#btn-sort').addEventListener('click', runSorting)
+ newElement.querySelector('#btn-sort').addEventListener('click', runDetailedSorting)
  element.parentNode.insertBefore(newElement, element)
 }
 
 function updateMenu(nbPromises){
   document.querySelector('#status-message').innerHTML = getStatusMessage()
-  document.querySelector('#promise-counter').innerHTML = `<progress max="${htmlProductNodes.length}" value="${count}"/>`
+  document.querySelector('#promise-counter').innerHTML = `<progress max="${productList.length}" value="${count}"/>`
   document.querySelector('#progress-container').style.display = isSorting ? 'block': 'none'
   document.querySelector('#btn-sort').disabled = isSorting
 }
-/* DOM manipulation methods */
-function injectNewProductList(productList){
+
+function initProductList(){
   let featuredGrid = document.querySelector('.family-featured-products.grid')
   featuredGrid.parentNode.removeChild(featuredGrid)
 
@@ -134,16 +159,35 @@ function injectNewProductList(productList){
   if (!grid){
     return
   }
+}
+
+function injectProductList(productList){
+  let grid = document.querySelector('.family-products.grid')
   grid.innerHTML= ''
-  for( let i=0; i< productList.length; i++) {
-    grid.appendChild(productList[i].htmlProductNode)
-  }
+  productList.forEach(product => {
+    grid.appendChild(product.htmlNode)
+  })
+
 }
 
 /* ========================================================================== */
 /* Utils */
+function getStatusMessage(){
+  let key = isSorting ? 'progress' : 'done'
+  return statusMap[locale][key]
+}
+
 function stripNonNumeric(str){
   return Number(str.replace(/\D/g,''))
+}
+
+function partitionByRating(list){
+  let nbStars = 5
+  let partitions = [[],[],[],[],[],[]] /* 0,1,2,3,4,5 stars */
+  list.forEach(e => {
+    partitions[nbStars - e.weightedRank].push(e) //reverse order
+  })
+  return partitions
 }
 
 /* ========================================================================== */
@@ -188,7 +232,11 @@ function getRatingFromNode(node) {
   }))
 }
 
-function getProductRatingFromNode(productNode){
+function getProductId(productNode){
+  return productNode.attributes['data-pid'].value
+}
+
+function getProductRating(productNode){
   let ratingNode = productNode.querySelector('.product-reviews > a > span:nth-of-type(1)')
   return getRatingFromNode(ratingNode)
 }
@@ -205,7 +253,7 @@ function convertToHtml(response){
     return domParser.parseFromString(html, "text/html")
   })
 }
-function fetchProductRatings(url){
+function fetchProductRating(url){
   let headers = new Headers({'Content-Type': 'text/html'})
   let req = new Request(url, {headers,  credentials: 'include'})
   return fetch(req).then(convertToHtml).then(htmlDoc => {
