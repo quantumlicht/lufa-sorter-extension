@@ -3,7 +3,7 @@
 const domParser = new DOMParser()
 const locale = window.location.pathname.split(/\//)[1]
 
-var productList
+var originalProductList
 var partitionedProductList
 var isSorting = false
 var count = 0
@@ -50,24 +50,23 @@ main()
 
 function main(){
 
-  let htmlProductNodes = [].slice.call(document.querySelectorAll('.family-products > .single-product'))
+  let htmlProductNodes = [].slice.call(document.querySelectorAll('.family-products > .single-product-wrapper'))
   if (!htmlProductNodes){
     return
   }
 
   /* extend with metadata */
-  productList = htmlProductNodes.map(htmlNode => {
+  originalProductList = htmlProductNodes.map(htmlNode => {
     return {
       htmlNode,
-      id: getProductId(htmlNode),
+      uuid: getProductUUID(htmlNode),
       nbComments: getNbCommentsFromNode(htmlNode),
-      weightedRank: getProductRating(htmlNode)
+      weigthedRating: getProductRating(htmlNode)
     }
   })
 
   // Do preliminary sorting and then partition by rating
-  partitionedProductList = partitionByRating(productList)
-
+  partitionedProductList = partitionByRating(originalProductList)
   runPreliminarySorting()
 
   chrome.storage.sync.get({
@@ -87,7 +86,26 @@ function main(){
 
 function runPreliminarySorting(){
   initProductList()
-  injectProductList(productList.sort(sortDesc))
+  // copies and keep original intact
+  injectProductList(originalProductList.concat().sort(sortDesc))
+}
+
+function runDetailedSorting(){
+  sortStarted()
+  var partitions = [[],[],[],[],[],[]]
+  let partitionPromiseList = partitionedProductList.map((productPartition, i) => {
+    console.log('sendProductRatingPromiseRequest', 5-i)
+    let productRatingsPromiseList = getProductRatingPromiseList(productPartition)
+    return Promise.all(productRatingsPromiseList)
+      .then(productRatingList => {
+        let sortedProductList = productRatingList.sort(sortDesc)
+        partitions[i] = sortedProductList
+        // injectProductList([].concat.apply([], partitions))
+        replacePartition(sortedProductList, i)
+        console.log('replacePartition', sortedProductList, 5-i)
+      })
+  })
+  Promise.all(partitionPromiseList).then(sortComplete)
 }
 
 function getProductRatingPromiseList(myProductList){
@@ -98,32 +116,14 @@ function getProductRatingPromiseList(myProductList){
       fetchProductRating(url, domParser).then(ratings => {
         fetchComplete()
         resolve({
-          htmlNode: productNode,
+          ...product,
           ratings,
-          weightedRank: getWeightedRank(ratings),
-          nbComments: getNbCommentsFromNode(productNode)
+          weigthedRating: calcWeigthedRating(ratings)
         })
       })
     })
   })
 }
-
-function runDetailedSorting(){
-  sortStarted()
-  var newList = [[],[],[],[],[],[]]
-  let partitionPromiseList = partitionedProductList.map((productPartition, i) => {
-    let productRatingsPromiseList = getProductRatingPromiseList(productPartition)
-    return Promise.all(productRatingsPromiseList)
-      .then(productRatingList => {
-        let sortedProductList = productRatingList.sort(sortDesc)
-        newList[i] = sortedProductList
-        injectProductList([].concat.apply([], newList))
-      })
-  })
-  Promise.all(partitionPromiseList).then(sortComplete)
-
-}
-
 /* ========================================================================== */
 /* DOM manipulation methods */
 function injectMenu(htmlDoc, autoOrder){
@@ -137,7 +137,7 @@ function injectMenu(htmlDoc, autoOrder){
  newElement.querySelector('#app-name').innerHTML = statusMap[locale]['appName']
  newElement.querySelector('#app-presentation').innerHTML = statusMap[locale]['appPresentation']
 
- newElement.querySelector('#promise-counter').innerHTML = `<progress max="${productList.length}" value="${count}"/>`
+ newElement.querySelector('#promise-counter').innerHTML = `<progress max="${originalProductList.length}" value="${count}"/>`
 
  newElement.querySelector('#btn-sort').innerHTML = statusMap[locale]['sortBtn']
  newElement.querySelector('#btn-sort').addEventListener('click', runDetailedSorting)
@@ -146,7 +146,7 @@ function injectMenu(htmlDoc, autoOrder){
 
 function updateMenu(nbPromises){
   document.querySelector('#status-message').innerHTML = getStatusMessage()
-  document.querySelector('#promise-counter').innerHTML = `<progress max="${productList.length}" value="${count}"/>`
+  document.querySelector('#promise-counter').innerHTML = `<progress max="${originalProductList.length}" value="${count}"/>`
   document.querySelector('#progress-container').style.display = isSorting ? 'block': 'none'
   document.querySelector('#btn-sort').disabled = isSorting
 }
@@ -167,7 +167,14 @@ function injectProductList(productList){
   productList.forEach(product => {
     grid.appendChild(product.htmlNode)
   })
+}
 
+function replacePartition(partition, partitionIndex){
+  var oldPartion = partitionedProductList[partitionIndex]
+  partition.forEach((e, i) => {
+    let child = oldPartion[i].htmlNode
+    child.parentNode.replaceChild(e.htmlNode, child)
+  })
 }
 
 /* ========================================================================== */
@@ -185,14 +192,14 @@ function partitionByRating(list){
   let nbStars = 5
   let partitions = [[],[],[],[],[],[]] /* 0,1,2,3,4,5 stars */
   list.forEach(e => {
-    partitions[nbStars - e.weightedRank].push(e) //reverse order
+    partitions[nbStars - e.weigthedRating].push(e) //reverse order
   })
   return partitions
 }
 
 /* ========================================================================== */
 /* Sorting methods */
-function getWeightedRank(ratings) {
+function calcWeigthedRating(ratings) {
   let score = Object.keys(ratings).reduce((sum, nbStar)=> {
     return sum + nbStar * ratings[nbStar]
   }, 0)
@@ -203,18 +210,8 @@ function getWeightedRank(ratings) {
   return score / Object.values(ratings).reduce( (sum, v)=> {return sum + v}, 0)
 }
 
-function sortAsc(a, b){
-  let diff = a.weightedRank - b.weightedRank
-  if (diff) {
-    return diff
-  }
-  else {
-    return a.nbComments - b.nbComments
-  }
-}
-
 function sortDesc(a, b){
-  let diff = b.weightedRank - a.weightedRank
+  let diff = b.weigthedRating - a.weigthedRating
   if (diff) {
     return diff
   }
@@ -227,13 +224,14 @@ function sortDesc(a, b){
 /* Node parsing methods */
 function getRatingFromNode(node) {
   let textRegexp = /rating-[0-9]+/g
-  return stripNonNumeric(node.className.split(/\s+/).find( clazz => {
+  return stripNonNumeric(node.className.split(/\s+/).find(clazz => {
       return textRegexp.test(clazz)
   }))
 }
 
-function getProductId(productNode){
-  return productNode.attributes['data-pid'].value
+function getProductUUID(productNode){
+  let n = productNode.querySelector('.single-product')
+  return `[${n.attributes["data-pid"].name}=${n.attributes["data-pid"].value}]`
 }
 
 function getProductRating(productNode){
@@ -253,12 +251,14 @@ function convertToHtml(response){
     return domParser.parseFromString(html, "text/html")
   })
 }
+
 function fetchProductRating(url){
   let headers = new Headers({'Content-Type': 'text/html'})
   let req = new Request(url, {headers,  credentials: 'include'})
   return fetch(req).then(convertToHtml).then(htmlDoc => {
     ratingNodes = htmlDoc.querySelectorAll('.aggregate-ratings.product-ratings')
     nbRatingNodes = htmlDoc.querySelectorAll('.aggregate-ratings > div > .rating-number')
+
     return  [].slice.call(ratingNodes).reduce( (curMap, node, i) => {
        let rating = getRatingFromNode(node)
        let hash = {}
